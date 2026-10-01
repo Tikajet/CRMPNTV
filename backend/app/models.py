@@ -1,41 +1,10 @@
-from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, Enum, JSON
+from sqlalchemy import Column, String, Integer, Numeric, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base
 from datetime import datetime
 import uuid
-import enum
 
 Base = declarative_base()
-
-class UserRole(str, enum.Enum):
-    ADMIN = "ADMIN"
-    GERENTE = "GERENTE"
-    SUPERVISOR = "SUPERVISOR"
-    VENDEDOR = "VENDEDOR"
-    FINANCEIRO = "FINANCEIRO"
-
-class LeadStatus(str, enum.Enum):
-    NOVO = "NOVO"
-    AGUARDANDO_ATENDIMENTO = "AGUARDANDO_ATENDIMENTO"
-    PRIMEIRO_CONTATO = "PRIMEIRO_CONTATO"
-    SEM_RESPOSTA = "SEM_RESPOSTA"
-    EM_NEGOCIACAO = "EM_NEGOCIACAO"
-    PROPOSTA_ENVIADA = "PROPOSTA_ENVIADA"
-    AGUARDANDO_RETORNO = "AGUARDANDO_RETORNO"
-    VENDA_CONCLUIDA = "VENDA_CONCLUIDA"
-    VENDA_PERDIDA = "VENDA_PERDIDA"
-    SEM_COBERTURA = "SEM_COBERTURA"
-    INVALIDO = "INVALIDO"
-
-class SaleStatus(str, enum.Enum):
-    EM_PREENCHIMENTO = "EM_PREENCHIMENTO"
-    AGUARDANDO_DOC = "AGUARDANDO_DOC"
-    AGUARDANDO_ANALISE = "AGUARDANDO_ANALISE"
-    APROVADA = "APROVADA"
-    REPROVADA = "REPROVADA"
-    AGUARDANDO_INSTALACAO = "AGUARDANDO_INSTALACAO"
-    INSTALADA = "INSTALADA"
-    CANCELADA = "CANCELADA"
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -45,7 +14,7 @@ class Usuario(Base):
     cpf = Column(String(14), unique=True, nullable=False)
     email = Column(String(150), unique=True, nullable=False)
     senha_hash = Column(String(255), nullable=False)
-    cargo = Column(Enum(UserRole), default=UserRole.VENDEDOR)
+    cargo = Column(String(50), default="VENDEDOR")
     equipe_id = Column(UUID(as_uuid=True), nullable=True)
     supervisor_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     telefone = Column(String(20), nullable=True)
@@ -84,7 +53,7 @@ class Lead(Base):
     cidade = Column(String(100), default="Pinhais")
     plano_interesse_id = Column(UUID(as_uuid=True), ForeignKey("planos.id"), nullable=True)
     origem = Column(String(50), nullable=False)
-    status = Column(Enum(LeadStatus), default=LeadStatus.NOVO)
+    status = Column(String(50), default="NOVO")
     vendedor_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -98,6 +67,6 @@ class Venda(Base):
     plano_id = Column(UUID(as_uuid=True), ForeignKey("planos.id"), nullable=False)
     valor_mensal = Column(Numeric(10, 2), nullable=False)
     taxa_instalacao = Column(Numeric(10, 2), default=0.00)
-    status = Column(Enum(SaleStatus), default=SaleStatus.EM_PREENCHIMENTO)
+    status = Column(String(50), default="EM_PREENCHIMENTO")
     comissao_calculada = Column(Numeric(10, 2), default=0.00)
     data_venda = Column(DateTime, default=datetime.utcnow)

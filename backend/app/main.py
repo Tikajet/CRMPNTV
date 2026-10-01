@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
 from .database import get_db, init_db
-from .models import Usuario, UserRole, Lead, LeadStatus, Plano
+from .models import Usuario, Lead, Plano
 from .auth import verify_password, get_password_hash, create_access_token
 from .schemas import LeadCreate, LeadOut, UsuarioCreate, UsuarioOut
 
@@ -33,10 +33,8 @@ def read_root():
 @app.post("/seed")
 def seed_initial_data(db: Session = Depends(get_db)):
     try:
-        # Garante a criação de tabelas
         init_db()
 
-        # Procura/Cria Administrador
         admin = db.query(Usuario).filter(Usuario.email == "admin@pinhaisnet.com.br").first()
         if not admin:
             senha_hash = get_password_hash("admin123")
@@ -45,12 +43,11 @@ def seed_initial_data(db: Session = Depends(get_db)):
                 cpf="000.000.000-00",
                 email="admin@pinhaisnet.com.br",
                 senha_hash=senha_hash,
-                cargo=UserRole.ADMIN,
+                cargo="ADMIN",
                 telefone="(41) 99999-9999"
             )
             db.add(admin)
 
-        # Procura/Cria Planos de Internet
         if db.query(Plano).count() == 0:
             planos = [
                 Plano(nome="PinhaisNet 300 Mega", download_mbps=300, upload_mbps=150, valor_mensal=89.90, taxa_instalacao=0.00, descricao="Fibra Óptica Ultra Rápida"),
@@ -63,7 +60,7 @@ def seed_initial_data(db: Session = Depends(get_db)):
         return {"status": "sucesso", "message": "Dados inicializados com sucesso! Login: admin@pinhaisnet.com.br / Senha: admin123"}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro no banco de dados: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
