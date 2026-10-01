@@ -22,13 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-def startup_event():
-    try:
-        init_db()
-    except Exception as e:
-        print(f"Erro ao inicializar DB: {e}")
-
 @app.get("/")
 def read_root():
     return {
@@ -40,9 +33,10 @@ def read_root():
 @app.post("/seed")
 def seed_initial_data(db: Session = Depends(get_db)):
     try:
+        # Garante a criação de tabelas
         init_db()
-        
-        # Procura Admin
+
+        # Procura/Cria Administrador
         admin = db.query(Usuario).filter(Usuario.email == "admin@pinhaisnet.com.br").first()
         if not admin:
             senha_hash = get_password_hash("admin123")
@@ -56,7 +50,7 @@ def seed_initial_data(db: Session = Depends(get_db)):
             )
             db.add(admin)
 
-        # Procura Planos
+        # Procura/Cria Planos de Internet
         if db.query(Plano).count() == 0:
             planos = [
                 Plano(nome="PinhaisNet 300 Mega", download_mbps=300, upload_mbps=150, valor_mensal=89.90, taxa_instalacao=0.00, descricao="Fibra Óptica Ultra Rápida"),
@@ -69,7 +63,7 @@ def seed_initial_data(db: Session = Depends(get_db)):
         return {"status": "sucesso", "message": "Dados inicializados com sucesso! Login: admin@pinhaisnet.com.br / Senha: admin123"}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Erro no banco de dados: {str(e)}")
 
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
