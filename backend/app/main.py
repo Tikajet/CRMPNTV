@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
+import traceback
 from .database import get_db, init_db
 from .models import Usuario, UserRole, Lead, LeadStatus, Plano
 from .auth import verify_password, get_password_hash, create_access_token
@@ -36,30 +37,38 @@ def read_root():
 
 @app.post("/seed")
 def seed_initial_data(db: Session = Depends(get_db)):
-    # Criar Admin se não existir
-    admin = db.query(Usuario).filter(Usuario.email == "admin@pinhaisnet.com.br").first()
-    if not admin:
-        admin = Usuario(
-            nome="Administrador PinhaisNet",
-            cpf="000.000.000-00",
-            email="admin@pinhaisnet.com.br",
-            senha_hash=get_password_hash("admin123"),
-            cargo=UserRole.ADMIN,
-            telefone="(41) 99999-9999"
-        )
-        db.add(admin)
+    try:
+        # Garante a criação das tabelas se ainda não existirem
+        init_db()
 
-    # Criar Planos de Exemplo
-    if db.query(Plano).count() == 0:
-        planos = [
-            Plano(nome="PinhaisNet 300 Mega", download_mbps=300, upload_mbps=150, valor_mensal=89.90, taxa_instalacao=0.00, descricao="Fibra Óptica Ultra Rápida"),
-            Plano(nome="PinhaisNet 600 Mega", download_mbps=600, upload_mbps=300, valor_mensal=119.90, taxa_instalacao=0.00, descricao="Ideal para Gamers e Home Office"),
-            Plano(nome="PinhaisNet 1 Giga", download_mbps=1000, upload_mbps=500, valor_mensal=169.90, taxa_instalacao=0.00, descricao="Velocidade máxima para toda a família")
-        ]
-        db.add_all(planos)
+        # Criar Admin se não existir
+        admin = db.query(Usuario).filter(Usuario.email == "admin@pinhaisnet.com.br").first()
+        if not admin:
+            senha_criptografada = get_password_hash("admin123")
+            admin = Usuario(
+                nome="Administrador PinhaisNet",
+                cpf="000.000.000-00",
+                email="admin@pinhaisnet.com.br",
+                senha_hash=senha_criptografada,
+                cargo=UserRole.ADMIN,
+                telefone="(41) 99999-9999"
+            )
+            db.add(admin)
 
-    db.commit()
-    return {"message": "Dados iniciais criados com sucesso! Admin: admin@pinhaisnet.com.br / Senha: admin123"}
+        # Criar Planos de Exemplo
+        if db.query(Plano).count() == 0:
+            planos = [
+                Plano(nome="PinhaisNet 300 Mega", download_mbps=300, upload_mbps=150, valor_mensal=89.90, taxa_instalacao=0.00, descricao="Fibra Óptica Ultra Rápida"),
+                Plano(nome="PinhaisNet 600 Mega", download_mbps=600, upload_mbps=300, valor_mensal=119.90, taxa_instalacao=0.00, descricao="Ideal para Gamers e Home Office"),
+                Plano(nome="PinhaisNet 1 Giga", download_mbps=1000, upload_mbps=500, valor_mensal=169.90, taxa_instalacao=0.00, descricao="Velocidade máxima para toda a família")
+            ]
+            db.add_all(planos)
+
+        db.commit()
+        return {"status": "sucesso", "message": "Dados iniciais criados! Admin: admin@pinhaisnet.com.br / Senha: admin123"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro interno no seed: {str(e)}")
 
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
