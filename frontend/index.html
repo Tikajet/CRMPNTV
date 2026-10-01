@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PINHAISNET CRM - Gestão Inteligente, Vendas Eficientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              pntv: {
+                blue: '#0056B3',
+                red: '#D9534F',
+                dark: '#1E293B',
+                light: '#F8FAFC'
+              }
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-pntv-light text-slate-800 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
