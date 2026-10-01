@@ -2,9 +2,11 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from typing import List
 from .database import get_db, init_db
-from .models import Usuario, UserRole
+from .models import Usuario, UserRole, Lead, LeadStatus, Plano
 from .auth import verify_password, get_password_hash, create_access_token
+from .schemas import LeadCreate, LeadOut, UsuarioCreate, UsuarioOut
 
 app = FastAPI(
     title="PINHAISNET CRM API",
@@ -32,6 +34,33 @@ def read_root():
         "slogan": "Gestão inteligente, vendas eficientes."
     }
 
+@app.post("/seed")
+def seed_initial_data(db: Session = Depends(get_db)):
+    # Criar Admin se não existir
+    admin = db.query(Usuario).filter(Usuario.email == "admin@pinhaisnet.com.br").first()
+    if not admin:
+        admin = Usuario(
+            nome="Administrador PinhaisNet",
+            cpf="000.000.000-00",
+            email="admin@pinhaisnet.com.br",
+            senha_hash=get_password_hash("admin123"),
+            cargo=UserRole.ADMIN,
+            telefone="(41) 99999-9999"
+        )
+        db.add(admin)
+
+    # Criar Planos de Exemplo
+    if db.query(Plano).count() == 0:
+        planos = [
+            Plano(nome="PinhaisNet 300 Mega", download_mbps=300, upload_mbps=150, valor_mensal=89.90, taxa_instalacao=0.00, descricao="Fibra Óptica Ultra Rápida"),
+            Plano(nome="PinhaisNet 600 Mega", download_mbps=600, upload_mbps=300, valor_mensal=119.90, taxa_instalacao=0.00, descricao="Ideal para Gamers e Home Office"),
+            Plano(nome="PinhaisNet 1 Giga", download_mbps=1000, upload_mbps=500, valor_mensal=169.90, taxa_instalacao=0.00, descricao="Velocidade máxima para toda a família")
+        ]
+        db.add_all(planos)
+
+    db.commit()
+    return {"message": "Dados iniciais criados com sucesso! Admin: admin@pinhaisnet.com.br / Senha: admin123"}
+
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(Usuario).filter(Usuario.email == form_data.username).first()
@@ -55,3 +84,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             "cargo": user.cargo
         }
     }
+
+@app.get("/leads", response_model=List[LeadOut])
+def listar_leads(db: Session = Depends(get_db)):
+    return db.query(Lead).all()
+
+@app.post("/leads", response_model=LeadOut)
+def criar_lead(lead_in: LeadCreate, db: Session = Depends(get_db)):
+    novo_lead = Lead(**lead_in.model_dump())
+    db.add(novo_lead)
+    db.commit()
+    db.refresh(novo_lead)
+    return novo_lead
